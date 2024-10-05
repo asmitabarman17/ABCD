@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tools Dashboard</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #e0f7fa;
+            margin: 0;
+            display: flex;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+        }
+        .sidebar {
+            width: 20%;
+            padding: 15px;
+            background-color: #f4f4f4;
+            height: 100vh;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .content {
+            width: 80%;
+            padding: 20px;
+        }
+        .tool-section {
+            display: none;
+        }
+        .tool-section.active {
+            display: block;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Snake game styling */
+        #snakeGame {
+            background-color: #90ee90; /* Light green background */
+            border: 1px solid #000;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        /* Dino game specific styling */
+        #dinoGame {
+            width: 400px;
+            height: 200px;
+            background-color: #f7f7f7;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .dino {
+            width: 40px;
+            height: 40px;
+            background-color: #3498db;
+            position: absolute;
+            bottom: 0;
+            left: 20px; /* Start position */
+            transition: bottom 0.2s;
+        }
+        .obstacle {
+            width: 20px;
+            height: 40px;
+            background-color: #e74c3c;
+            position: absolute;
+            bottom: 0;
+            right: -20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Sidebar with tool buttons -->
+    <div class="sidebar">
+        <button onclick="openTool('snake')">Snake Game</button>
+        <button onclick="openTool('ageCalc')">Age Calculator</button>
+        <button onclick="openTool('dino')">Dinosaur Game</button>
+    </div>
+
+    <!-- Content area where the tools will be displayed -->
+    <div class="content">
+        <!-- Snake Game Section -->
+        <div id="snake" class="tool-section">
+            <h2>Snake Game</h2>
+            <canvas id="snakeGame" width="400" height="400"></canvas>
+            <p id="snakeScore">Score: 0</p>
+        </div>
+
+        <!-- Age Calculator Section -->
+        <div id="ageCalc" class="tool-section">
+            <h2>Age Calculator</h2>
+            <label for="birthdate">Enter your birthdate:</label>
+            <input type="date" id="birthdate">
+            <button onclick="calculateAge()">Calculate Age</button>
+            <p id="ageResult"></p>
+        </div>
+
+        <!-- Dinosaur Game Section -->
+        <div id="dino" class="tool-section">
+            <h2>Dinosaur Game</h2>
+            <div id="dinoGame">
+                <div class="dino" id="dino"></div>
+            </div>
+            <p id="dinoScore">Score: 0</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Function to handle opening and switching between tools
+    function openTool(toolId) {
+        const sections = document.querySelectorAll('.tool-section');
+        sections.forEach(section => {
+            section.classList.remove('active');
+        });
+        document.getElementById(toolId).classList.add('active');
+
+        // Start the appropriate game
+        if (toolId === 'snake') {
+            startSnakeGame();
+        }
+        if (toolId === 'dino') {
+            startDinoGame();
+        }
+    }
+
+    // Snake Game Logic
+    const canvas = document.getElementById("snakeGame");
+    const ctx = canvas.getContext("2d");
+    const box = 20; // Size of the snake box
+    let snake = [{ x: 9 * box, y: 9 * box }]; // Initial position of the snake
+    let direction = "";
+    let food = spawnFood();
+    let score = 0;
+    let gameInterval;
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+        drawSnake();
+        drawFood();
+        moveSnake();
+        checkGameOver();
+    }
+
+    function drawSnake() {
+        for (let i = 0; i < snake.length; i++) {
+            ctx.fillStyle = (i === 0) ? "green" : "white"; // Color the head differently
+            ctx.fillRect(snake[i].x, snake[i].y, box, box);
+            ctx.strokeStyle = "black"; // Border color
+            ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+        }
+    }
+
+    function drawFood() {
+        ctx.fillStyle = "red"; // Food color
+        ctx.fillRect(food.x, food.y, box, box);
+    }
+
+    function moveSnake() {
+        let snakeX = snake[0].x;
+        let snakeY = snake[0].y;
+
+        if (direction === "LEFT") snakeX -= box;
+        if (direction === "UP") snakeY -= box;
+        if (direction === "RIGHT") snakeX += box;
+        if (direction === "DOWN") snakeY += box;
+
+        // Check if snake eats food
+        if (snakeX === food.x && snakeY === food.y) {
+            score++;
+            document.getElementById('snakeScore').innerText = "Score: " + score;
+            food = spawnFood();
+        } else {
+            snake.pop(); // Remove the tail
+        }
+
+        // Add new head
+        snake.unshift({ x: snakeX, y: snakeY });
+    }
+
+    function checkGameOver() {
+        const snakeX = snake[0].x;
+        const snakeY = snake[0].y;
+
+        if (snakeX < 0 || snakeY < 0 || snakeX >= canvas.width || snakeY >= canvas.height || collision(snakeX, snakeY)) {
+            clearInterval(gameInterval);
+            alert("Game Over! Your Score: " + score);
+            resetSnakeGame();
+        }
+    }
+
+    function collision(snakeX, snakeY) {
+        for (let i = 1; i < snake.length; i++) {
+            if (snakeX === snake[i].x && snakeY === snake[i].y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function spawnFood() {
+        return {
+            x: Math.floor(Math.random() * (canvas.width / box)) * box,
+            y: Math.floor(Math.random() * (canvas.height / box)) * box
+        };
+    }
+
+    function resetSnakeGame() {
+        score = 0;
+        snake = [{ x: 9 * box, y: 9 * box }];
+        direction = "";
+        document.getElementById('snakeScore').innerText = "Score: " + score;
+        draw(); // Redraw the empty game state
+    }
+
+    function startSnakeGame() {
+        document.addEventListener("keydown", changeDirection);
+        gameInterval = setInterval(draw, 100);
+        draw(); // Initial drawing
+    }
+
+    function changeDirection(event) {
+        if (event.keyCode === 37 && direction !== "RIGHT") {
+            direction = "LEFT";
+        } else if (event.keyCode === 38 && direction !== "DOWN") {
+            direction = "UP";
+        } else if (event.keyCode === 39 && direction !== "LEFT") {
+            direction = "RIGHT";
+        } else if (event.keyCode === 40 && direction !== "UP") {
+            direction = "DOWN";
+        }
+    }
+
+    // Age Calculator Logic
+    function calculateAge() {
+        const birthdate = document.getElementById("birthdate").value;
+        if (!birthdate) {
+            alert("Please select a birthdate!");
+            return;
+        }
+        const birthDateObj = new Date(birthdate);
+        const age = new Date().getFullYear() - birthDateObj.getFullYear();
+        const ageResult = document.getElementById("ageResult");
+        ageResult.textContent = "Your Age: " + age;
+    }
+
+    // Dinosaur Game Logic
+    const dino = document.getElementById("dino");
+    const dinoGame = document.getElementById("dinoGame");
+    let dinoScore = 0;
+    let obstacleInterval;
+    let jumping = false; // New state to track jump status
+
+    function startDinoGame() {
+        dino.style.bottom = "0px"; // Reset the dino position
+        dinoScore = 0;
+        document.getElementById("dinoScore").innerText = "Score: " + dinoScore;
+        document.addEventListener("keydown", jump);
+        obstacleInterval = setInterval(createObstacle, 2000); // Create a new obstacle every 2 seconds
+    }
+
+    function jump() {
+        if (!jumping) { // Allow jump if not already jumping
+            jumping = true;
+            dino.style.bottom = "80px"; // Jump height
+            setTimeout(() => {
+                dino.style.bottom = "0px"; // Return to ground after jump
+                jumping = false; // Reset jump status
+            }, 500); // Jump duration
+        }
+    }
+
+    function createObstacle() {
+        const obstacle = document.createElement("div");
+        obstacle.classList.add("obstacle");
+        obstacle.style.right = "0px";
+        dinoGame.appendChild(obstacle);
+        moveObstacle(obstacle);
+    }
+
+    function moveObstacle(obstacle) {
+        let obstacleInterval = setInterval(() => {
+            let obstacleRight = parseInt(obstacle.style.right);
+            if (obstacleRight >= dinoGame.clientWidth) {
+                clearInterval(obstacleInterval);
+                dinoGame.removeChild(obstacle);
+                dinoScore++;
+                document.getElementById("dinoScore").innerText = "Score: " + dinoScore;
+            } else {
+                obstacle.style.right = (obstacleRight + 5) + "px"; // Move obstacle
+                checkCollision(obstacle, obstacleInterval);
+            }
+        }, 20); // Move speed
+    }
+
+    function checkCollision(obstacle, obstacleInterval) {
+        const dinoBottom = parseInt(dino.style.bottom);
+        const obstacleRight = parseInt(obstacle.style.right);
+        const obstacleBottom = 0; // Obstacle is always at the bottom
+
+        if (obstacleRight >= dinoGame.clientWidth - 40 && dinoBottom <= obstacleBottom + 40) {
+            alert("Game Over! Your Score: " + dinoScore);
+            clearInterval(obstacleInterval);
+            resetDinoGame();
+        }
+    }
+
+    function resetDinoGame() {
+        dinoGame.innerHTML = '<div class="dino" id="dino"></div>'; // Reset the game
+        clearInterval(obstacleInterval);
+        jumping = false; // Reset jump status
+    }
+
+</script>
+</body>
+</html>
